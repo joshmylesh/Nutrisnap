@@ -1,6 +1,6 @@
-# NutriTrack
+# NutriSnap
 
-A mobile-first nutrition tracking SPA with React + Tailwind CSS, a Flask REST API, JWT authentication, SQLite local storage, and a MySQL-compatible schema. The first version uses a clearly labeled mock food recognizer so the full user flow works before a real TensorFlow.js model is connected.
+A webpage-first nutrition tracking SPA with React + Tailwind CSS, a Flask REST API, JWT authentication, SQLite local storage, and a MySQL-compatible schema. The first version uses a clearly labeled mock food recognizer so the full user flow works before a real TensorFlow.js model is connected.
 
 ## Included
 - Landing/auth experience, registration, login, demo account, protected app workspace, sign-out and theme toggle.
@@ -24,7 +24,6 @@ cd backend
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-Copy-Item .env.example .env
 python app.py
 ```
 If PowerShell blocks activation, use `Set-ExecutionPolicy -Scope Process Bypass` in that terminal, or run `.venv\Scripts\python.exe app.py` after installing requirements.
