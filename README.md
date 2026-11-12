@@ -49,13 +49,22 @@ The backend creates the SQLite database, seeded food catalogue, demo account, go
 ## Configuration
 Backend reads environment variables from the process environment. `.env.example` is a template; the current minimal setup does not auto-load `.env`, so set variables in your shell or install `python-dotenv` and add `from dotenv import load_dotenv; load_dotenv()` near the top of `app.py`.
 
-Frontend API URL defaults to `http://localhost:5000/api`. To change it, create `frontend/.env` with `VITE_API_URL=http://localhost:5000/api` and restart Vite.
+Frontend API URL defaults to the same-origin `/api` path. For local development, set `VITE_API_URL=http://localhost:5000/api` in `frontend/.env` and restart Vite.
+
+## Deploy to Vercel
+The root `vercel.json` configures two services: the Flask API in `backend` and the Vite SPA in `frontend`. Requests to `/api/*` go to the backend; all other paths go to the frontend. The frontend calls the API through the same-origin `/api` route, so it does not need a service binding or a Vercel API URL build variable.
+
+In Vercel, import the repository as one project and add these project environment variables for the backend:
+- `SECRET_KEY`: a long, randomly generated secret.
+- `DATABASE_URL`: a connection URL for a managed, persistent MySQL database, such as `mysql+pymysql://user:password@host:3306/nutritrack`. URL-encode special characters in credentials.
+
+The default SQLite database is local development storage and is not suitable for Vercel's serverless filesystem. The backend creates its tables and demo seed data when it initializes; database data must be on persistent managed storage. Set `FRONTEND_ORIGIN` only if you need to restrict CORS; same-origin requests through the configured rewrite do not require cross-origin access.
 
 ## MySQL deployment
 1. Create a MySQL 8 database using `database/schema.sql` (or create an empty database and let SQLAlchemy create tables).
-2. Install the driver: `pip install PyMySQL`.
+2. The PyMySQL driver is included in `backend/requirements.txt`.
 3. Set `DATABASE_URL=mysql+pymysql://USER:PASSWORD@HOST:3306/nutritrack`.
-4. Set a long random `SECRET_KEY`, restrict `FRONTEND_ORIGIN` to your deployed frontend URL, and run behind a production WSGI server such as Gunicorn (`pip install gunicorn; gunicorn app:app`).
+4. Set a long random `SECRET_KEY`, restrict `FRONTEND_ORIGIN` to your deployed frontend URL if needed, and run behind a production WSGI server such as Gunicorn (`pip install gunicorn; gunicorn app:app`) outside Vercel.
 5. Use HTTPS, backups, monitoring, and a migration tool such as Flask-Migrate/Alembic for schema changes.
 
 ## Main API routes
