@@ -31,6 +31,7 @@ class WeightLog(db.Model):
     id=db.Column(db.Integer, primary_key=True); user_id=db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True); weight_kg=db.Column(db.Float, nullable=False); logged_on=db.Column(db.Date, default=date.today)
 
 FOODS=[
+('Bhaji',110,4,15,3,5,'150 g serving','Kenyan'),('Kuku choma',290,27,0,20,0,'150 g serving','Kenyan'),('Masala chips',310,4,42,15,4,'150 g serving','Kenyan'),
 ('Ugali',360,7,79,2,2,'250 g serving','Kenyan'),('Sukuma wiki',65,3,9,2,4,'150 g serving','Kenyan'),('Githeri',170,7,30,2,7,'200 g serving','Kenyan'),('Chapati',300,6,48,9,3,'1 medium','Kenyan'),('Nyama choma',290,27,0,20,0,'150 g serving','Kenyan'),('Mandazi',270,5,36,11,1,'1 piece','Kenyan'),('Cassava, boiled',160,1,38,0,2,'150 g serving','Kenyan'),('Rice and beans',210,8,39,2,6,'200 g serving','Kenyan'),('Pilau',240,7,35,8,2,'200 g serving','Kenyan'),('Omena',220,28,0,12,0,'100 g serving','Kenyan'),('Rice, cooked',130,3,28,0,0.4,'100 g','Grains'),('Chicken breast',165,31,0,4,0,'100 g','Protein'),('Boiled egg',78,6,1,5,0,'1 large','Protein'),('Banana',89,1,23,0,3,'100 g','Fruit'),('Avocado',160,2,9,15,7,'100 g','Fruit'),('Oatmeal',150,5,27,3,4,'1 bowl','Breakfast'),('Greek yogurt',100,10,4,4,0,'170 g','Dairy'),('Apple',52,0,14,0,2,'100 g','Fruit'),('Beans, cooked',127,9,23,1,6,'100 g','Protein'),('Sukuma wiki with beans',120,6,16,3,6,'200 g serving','Kenyan'),('Beef stew',220,22,7,12,1,'150 g serving','Kenyan'),('Sweet potato, boiled',86,2,20,0,3,'100 g','Vegetable'),('Whole wheat bread',247,13,41,4,7,'100 g','Grains'),('Salmon',208,20,0,13,0,'100 g','Protein'),('Mixed salad',45,2,8,1,3,'150 g bowl','Vegetable'),
 ('Beef pilau',360,18,45,12,3,'250 g serving','Kenyan'),('Chicken pilau',330,20,42,8,3,'250 g serving','Kenyan'),('Mukimo',180,5,35,2,7,'200 g serving','Kenyan'),('Matoke, stewed',210,4,42,4,6,'250 g serving','Kenyan'),('Irio',190,6,35,3,8,'200 g serving','Kenyan'),('Ndengu stew',180,12,30,2,8,'200 g serving','Kenyan'),('Maharagwe ya nazi',240,10,28,10,8,'200 g serving','Kenyan'),('Wali wa nazi',260,5,42,8,1,'200 g serving','Kenyan'),('Kachumbari',35,2,7,0,2,'150 g serving','Kenyan'),('Beef samosa',220,8,22,11,2,'1 medium','Kenyan'),('Roasted maize',160,5,34,2,4,'1 cob','Kenyan'),('Roasted groundnuts',170,7,6,14,3,'30 g serving','Kenyan'),('Kenyan chai with milk and sugar',90,3,14,3,0,'1 cup','Kenyan'),('Ugali, nyama choma and sukuma wiki',650,38,83,24,11,'1 plate','Kenyan Combo'),('Ugali and beef stew',580,31,86,14,10,'1 plate','Kenyan Combo'),('Ugali, sukuma wiki and beans',480,18,88,7,15,'1 plate','Kenyan Combo'),('Chapati and beans',450,18,72,12,12,'1 plate','Kenyan Combo'),('Chapati and ndengu',480,20,72,11,14,'1 plate','Kenyan Combo'),('Rice and chicken stew',520,34,72,11,7,'1 plate','Kenyan Combo'),('Pilau and kachumbari',290,9,44,9,4,'1 plate','Kenyan Combo')]
 
@@ -120,11 +121,35 @@ def recognize():
     image=request.files['image']
     if not image.filename: return jsonify({'error':'Choose an image first'}),400
     if image.mimetype not in ['image/jpeg','image/png','image/webp','image/gif']: return jsonify({'error':'Use a JPG, PNG, WEBP or GIF image'}),400
-    # Mock recognition: deliberately transparent, deterministic demo result.
-    all_foods=Food.query.order_by(Food.id).all()
-    if not all_foods: return jsonify({'error':'Food database is empty'}),503
-    f=next((x for x in all_foods if x.name.lower() in ('githeri','ugali','chapati')),all_foods[0])
-    return jsonify({'recognizer':'mock','notice':'Demo prediction only; this is not real AI recognition.','food':food_dict(f),'confidence':0.82,'alternatives':[food_dict(x) for x in all_foods if x.id!=f.id][:3]})
+    try:
+        from PIL import Image
+        import torch
+        from transformers import AutoImageProcessor, AutoModelForImageClassification
+        model_id=os.environ.get('FOOD_MODEL_ID','waltertaya/kenyan-food-13')
+        if not hasattr(recognize,'model_cache') or recognize.model_cache.get('id')!=model_id:
+            processor=AutoImageProcessor.from_pretrained(model_id)
+            model=AutoModelForImageClassification.from_pretrained(model_id)
+            model.eval()
+            recognize.model_cache={'id':model_id,'processor':processor,'model':model}
+        cache=recognize.model_cache
+        img=Image.open(io.BytesIO(image.read())).convert('RGB')
+        inputs=cache['processor'](images=img,return_tensors='pt')
+        with torch.no_grad():
+            probabilities=cache['model'](**inputs).logits.softmax(dim=1)[0]
+        top=torch.topk(probabilities,min(3,probabilities.numel()))
+        label_map={'bhaji':'Bhaji','chapati':'Chapati','githeri':'Githeri','kachumbari':'Kachumbari','kukuchoma':'Kuku choma','mandazi':'Mandazi','masalachips':'Masala chips','matoke':'Matoke, stewed','mukimo':'Mukimo','nyamachoma':'Nyama choma','pilau':'Pilau','sukumawiki':'Sukuma wiki','ugali':'Ugali'}
+        predictions=[]
+        for score,index in zip(top.values.tolist(),top.indices.tolist()):
+            label=cache['model'].config.id2label.get(str(index),cache['model'].config.id2label.get(index,'unknown'))
+            canonical=label_map.get(str(label).lower().replace(' ','').replace('_',''),str(label).replace('_',' ').title())
+            food=Food.query.filter(Food.name.ilike(canonical)).first()
+            if food: predictions.append({'food':food_dict(food),'confidence':float(score)})
+        if not predictions: return jsonify({'error':'The model prediction did not match foods in the Kenyan food catalogue. Please search and select the food manually.'}),422
+        primary=predictions[0]
+        return jsonify({'recognizer':'kenyan-food-13','notice':'AI estimate from a Kenyan-food image model. Please confirm or correct the result before logging.','food':primary['food'],'confidence':primary['confidence'],'alternatives':[x['food'] for x in predictions[1:]]})
+    except Exception:
+        app.logger.exception('Food image recognition failed')
+        return jsonify({'error':'Food recognition is not ready. Install the backend AI dependencies and retry. You can still use Search instead to choose your food.'}),503
 @app.route('/api/meals',methods=['GET','POST'])
 @auth_required
 def meals():
