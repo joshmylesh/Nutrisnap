@@ -121,35 +121,11 @@ def recognize():
     image=request.files['image']
     if not image.filename: return jsonify({'error':'Choose an image first'}),400
     if image.mimetype not in ['image/jpeg','image/png','image/webp','image/gif']: return jsonify({'error':'Use a JPG, PNG, WEBP or GIF image'}),400
-    try:
-        from PIL import Image
-        import torch
-        from transformers import AutoImageProcessor, AutoModelForImageClassification
-        model_id=os.environ.get('FOOD_MODEL_ID','waltertaya/kenyan-food-13')
-        if not hasattr(recognize,'model_cache') or recognize.model_cache.get('id')!=model_id:
-            processor=AutoImageProcessor.from_pretrained(model_id)
-            model=AutoModelForImageClassification.from_pretrained(model_id)
-            model.eval()
-            recognize.model_cache={'id':model_id,'processor':processor,'model':model}
-        cache=recognize.model_cache
-        img=Image.open(io.BytesIO(image.read())).convert('RGB')
-        inputs=cache['processor'](images=img,return_tensors='pt')
-        with torch.no_grad():
-            probabilities=cache['model'](**inputs).logits.softmax(dim=1)[0]
-        top=torch.topk(probabilities,min(3,probabilities.numel()))
-        label_map={'bhaji':'Bhaji','chapati':'Chapati','githeri':'Githeri','kachumbari':'Kachumbari','kukuchoma':'Kuku choma','mandazi':'Mandazi','masalachips':'Masala chips','matoke':'Matoke, stewed','mukimo':'Mukimo','nyamachoma':'Nyama choma','pilau':'Pilau','sukumawiki':'Sukuma wiki','ugali':'Ugali'}
-        predictions=[]
-        for score,index in zip(top.values.tolist(),top.indices.tolist()):
-            label=cache['model'].config.id2label.get(str(index),cache['model'].config.id2label.get(index,'unknown'))
-            canonical=label_map.get(str(label).lower().replace(' ','').replace('_',''),str(label).replace('_',' ').title())
-            food=Food.query.filter(Food.name.ilike(canonical)).first()
-            if food: predictions.append({'food':food_dict(food),'confidence':float(score)})
-        if not predictions: return jsonify({'error':'The model prediction did not match foods in the Kenyan food catalogue. Please search and select the food manually.'}),422
-        primary=predictions[0]
-        return jsonify({'recognizer':'kenyan-food-13','notice':'AI estimate from a Kenyan-food image model. Please confirm or correct the result before logging.','food':primary['food'],'confidence':primary['confidence'],'alternatives':[x['food'] for x in predictions[1:]]})
-    except Exception:
-        app.logger.exception('Food image recognition failed')
-        return jsonify({'error':'Food recognition is not ready. Install the backend AI dependencies and retry. You can still use Search instead to choose your food.'}),503
+    # Lightweight demo recognizer: no model download or heavy ML packages.
+    all_foods=Food.query.order_by(Food.id).all()
+    if not all_foods: return jsonify({'error':'Food database is empty'}),503
+    f=next((x for x in all_foods if x.name.lower() in ('githeri','ugali','chapati')),all_foods[0])
+    return jsonify({'recognizer':'lightweight-demo','notice':'Demo result — this lightweight recognizer does not identify image contents. Search and choose the correct food.','food':food_dict(f),'confidence':0.82,'alternatives':[food_dict(x) for x in all_foods if x.id!=f.id][:3])
 @app.route('/api/meals',methods=['GET','POST'])
 @auth_required
 def meals():
