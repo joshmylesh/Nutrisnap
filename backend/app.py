@@ -31,7 +31,6 @@ class WeightLog(db.Model):
     id=db.Column(db.Integer, primary_key=True); user_id=db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True); weight_kg=db.Column(db.Float, nullable=False); logged_on=db.Column(db.Date, default=date.today)
 
 FOODS=[
-('Bhaji',110,4,15,3,5,'150 g serving','Kenyan'),('Kuku choma',290,27,0,20,0,'150 g serving','Kenyan'),('Masala chips',310,4,42,15,4,'150 g serving','Kenyan'),
 ('Ugali',360,7,79,2,2,'250 g serving','Kenyan'),('Sukuma wiki',65,3,9,2,4,'150 g serving','Kenyan'),('Githeri',170,7,30,2,7,'200 g serving','Kenyan'),('Chapati',300,6,48,9,3,'1 medium','Kenyan'),('Nyama choma',290,27,0,20,0,'150 g serving','Kenyan'),('Mandazi',270,5,36,11,1,'1 piece','Kenyan'),('Cassava, boiled',160,1,38,0,2,'150 g serving','Kenyan'),('Rice and beans',210,8,39,2,6,'200 g serving','Kenyan'),('Pilau',240,7,35,8,2,'200 g serving','Kenyan'),('Omena',220,28,0,12,0,'100 g serving','Kenyan'),('Rice, cooked',130,3,28,0,0.4,'100 g','Grains'),('Chicken breast',165,31,0,4,0,'100 g','Protein'),('Boiled egg',78,6,1,5,0,'1 large','Protein'),('Banana',89,1,23,0,3,'100 g','Fruit'),('Avocado',160,2,9,15,7,'100 g','Fruit'),('Oatmeal',150,5,27,3,4,'1 bowl','Breakfast'),('Greek yogurt',100,10,4,4,0,'170 g','Dairy'),('Apple',52,0,14,0,2,'100 g','Fruit'),('Beans, cooked',127,9,23,1,6,'100 g','Protein'),('Sukuma wiki with beans',120,6,16,3,6,'200 g serving','Kenyan'),('Beef stew',220,22,7,12,1,'150 g serving','Kenyan'),('Sweet potato, boiled',86,2,20,0,3,'100 g','Vegetable'),('Whole wheat bread',247,13,41,4,7,'100 g','Grains'),('Salmon',208,20,0,13,0,'100 g','Protein'),('Mixed salad',45,2,8,1,3,'150 g bowl','Vegetable'),
 ('Beef pilau',360,18,45,12,3,'250 g serving','Kenyan'),('Chicken pilau',330,20,42,8,3,'250 g serving','Kenyan'),('Mukimo',180,5,35,2,7,'200 g serving','Kenyan'),('Matoke, stewed',210,4,42,4,6,'250 g serving','Kenyan'),('Irio',190,6,35,3,8,'200 g serving','Kenyan'),('Ndengu stew',180,12,30,2,8,'200 g serving','Kenyan'),('Maharagwe ya nazi',240,10,28,10,8,'200 g serving','Kenyan'),('Wali wa nazi',260,5,42,8,1,'200 g serving','Kenyan'),('Kachumbari',35,2,7,0,2,'150 g serving','Kenyan'),('Beef samosa',220,8,22,11,2,'1 medium','Kenyan'),('Roasted maize',160,5,34,2,4,'1 cob','Kenyan'),('Roasted groundnuts',170,7,6,14,3,'30 g serving','Kenyan'),('Kenyan chai with milk and sugar',90,3,14,3,0,'1 cup','Kenyan'),('Ugali, nyama choma and sukuma wiki',650,38,83,24,11,'1 plate','Kenyan Combo'),('Ugali and beef stew',580,31,86,14,10,'1 plate','Kenyan Combo'),('Ugali, sukuma wiki and beans',480,18,88,7,15,'1 plate','Kenyan Combo'),('Chapati and beans',450,18,72,12,12,'1 plate','Kenyan Combo'),('Chapati and ndengu',480,20,72,11,14,'1 plate','Kenyan Combo'),('Rice and chicken stew',520,34,72,11,7,'1 plate','Kenyan Combo'),('Pilau and kachumbari',290,9,44,9,4,'1 plate','Kenyan Combo')]
 
@@ -121,11 +120,11 @@ def recognize():
     image=request.files['image']
     if not image.filename: return jsonify({'error':'Choose an image first'}),400
     if image.mimetype not in ['image/jpeg','image/png','image/webp','image/gif']: return jsonify({'error':'Use a JPG, PNG, WEBP or GIF image'}),400
-    # Lightweight demo recognizer: no model download or heavy ML packages.
+    # Mock recognition: deliberately transparent, deterministic demo result.
     all_foods=Food.query.order_by(Food.id).all()
     if not all_foods: return jsonify({'error':'Food database is empty'}),503
     f=next((x for x in all_foods if x.name.lower() in ('githeri','ugali','chapati')),all_foods[0])
-    return jsonify({'recognizer':'lightweight-demo','notice':'Demo result — this lightweight recognizer does not identify image contents. Search and choose the correct food.','food':food_dict(f),'confidence':0.82,'alternatives':[food_dict(x) for x in all_foods if x.id!=f.id][:3])
+    return jsonify({'recognizer':'mock','notice':'Demo prediction only; this is not real AI recognition.','food':food_dict(f),'confidence':0.82,'alternatives':[food_dict(x) for x in all_foods if x.id!=f.id][:3]})
 @app.route('/api/meals',methods=['GET','POST'])
 @auth_required
 def meals():
