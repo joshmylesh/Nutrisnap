@@ -5,7 +5,7 @@ A webpage-first nutrition tracking SPA with React + Tailwind CSS, a Flask REST A
 ## Included
 - Landing/auth experience, registration, login, demo account, protected app workspace, sign-out and theme toggle.
 - Dashboard with calorie ring, macro bars, recent meals, weekly chart and a local water tracker.
-- Food photo upload/camera capture, preview, mock analysis, portion adjustment, nutrition estimates and manual food fallback.
+- Food photo upload/camera capture, preview, portion adjustment, nutrition estimates and manual food search. Without an `HF_TOKEN`, analysis returns a clearly labeled demo estimate that does not inspect the image.
 - Kenyan and international foods, meal logging, edit quantity / delete, date filter, voice-search dictation where browser support exists, CSV export.
 - Goals/profile settings, daily/weekly meal-plan generator, history and calorie/macro charts.
 - Flask REST API, hashed passwords, JWT auth, per-user data filtering, validation, CORS and database seeding.
@@ -47,7 +47,7 @@ Frontend in a second terminal: `cd frontend && npm install && npm run dev`.
 The backend creates the SQLite database, seeded food catalogue, demo account, goals, weight history and sample meal logs on first run. Demo data is local and only for development. Change the demo password and `SECRET_KEY` before deploying publicly.
 
 ## Configuration
-Backend reads environment variables from the process environment. `.env.example` is a template; the current minimal setup does not auto-load `.env`, so set variables in your shell or install `python-dotenv` and add `from dotenv import load_dotenv; load_dotenv()` near the top of `app.py`.
+Backend reads environment variables from the process environment. `.env.example` is a template; the current minimal setup does not auto-load `.env`, so set variables in your shell or install `python-dotenv` and add `from dotenv import load_dotenv; load_dotenv()` near the top of `app.py`. `HF_TOKEN` is optional: without it, food scanning uses a clearly labeled fixed demo result; set it to enable image recognition.
 
 Frontend API URL defaults to the same-origin `/api` path. For local development, set `VITE_API_URL=http://localhost:5000/api` in `frontend/.env` and restart Vite.
 
@@ -71,7 +71,7 @@ The default SQLite database is local development storage and is not suitable for
 - `POST /api/auth/register`, `POST /api/auth/login`
 - `GET/PUT /api/profile`
 - `GET /api/foods?search=...`, `GET /api/foods/<id>`
-- `POST /api/recognize` (multipart form field `image`, JWT required; returns mock result)
+- `POST /api/recognize` (multipart form field `image`, JWT required; uses the configured image model or returns a clearly labeled demo result when `HF_TOKEN` is unset)
 - `GET/POST /api/meals`, `PUT/DELETE /api/meals/<id>`
 - `GET/PUT /api/goals`
 - `GET /api/progress?range=week|month`, `GET /api/history` (supports `format=csv`)
