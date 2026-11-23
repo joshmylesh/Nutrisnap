@@ -78,7 +78,7 @@ def register():
     if len(d['password'])<8: return jsonify({'error':'Password must be at least 8 characters'}),400
     if User.query.filter_by(email=email).first(): return jsonify({'error':'An account with this email already exists'}),409
     try:
-        u=User(name=d['name'].strip(),email=email,password_hash=generate_password_hash(d['password']),age=max(13,int(d.get('age',25))),gender=d.get('gender','Prefer not to say'),height_cm=float(d.get('height_cm',170)),weight_kg=float(d.get('weight_kg',70)),activity_level=d.get('activity_level','moderate'),goal=d.get('goal','maintain'),preferences=json.dumps(d.get('preferences',[])),restrictions=json.dumps(d.get('restrictions',[])))
+        u=User(name=d['name'].strip(),email=email,password_hash=generate_password_hash(d['password']),age=max(13,int(d.get('age',25))),gender=d.get('gender','Prefer not to say'),height_cm=float(d.get('height_cm',170)),weight_kg=float(d.get('weight_kg',70)),activity_level=d.get('activity_level','moderate'),goal=d.get('goal','maintain'),preferences=json.dumps(d.get('preferences',[])),restrictions=json.dumps(d.get('restrictions',[]))))
         db.session.add(u); db.session.flush(); db.session.add(Goal(user_id=u.id,calories=2000,protein=100,carbs=250,fat=67)); db.session.add(WeightLog(user_id=u.id,weight_kg=u.weight_kg)); db.session.commit()
         return jsonify({'token':token_for(u),'user':profile_dict(u)}),201
     except (ValueError,TypeError): db.session.rollback(); return jsonify({'error':'Check that age, height and weight are valid numbers'}),400
