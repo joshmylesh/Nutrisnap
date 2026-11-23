@@ -125,14 +125,7 @@ def recognize():
     if len(image_bytes)>10*1024*1024: return jsonify({'error':'Image must be 10 MB or smaller'}),413
     token=os.environ.get('HF_TOKEN')
     if not token:
-        food=Food.query.filter_by(name='Ugali').first()
-        if not food:
-            return jsonify({'error':'The demo food catalogue is unavailable. Please search for the dish manually.'}),503
-        return jsonify({
-            'recognizer':'demo',
-            'notice':'Demo estimate: this predictable sample does not analyze the image. Search for the dish manually to choose a closer food.',
-            'food':food_dict(food)
-        })
+        return jsonify({'error':'Food image recognition is not configured. Set HF_TOKEN to enable image analysis, or choose the food using manual search.'}),503
     try:
         from huggingface_hub import InferenceClient
         model_id=os.environ.get('FOOD_MODEL_ID','waltertaya/kenyan-food-13')
