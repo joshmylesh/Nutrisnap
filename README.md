@@ -5,7 +5,7 @@ A webpage-first nutrition tracking SPA with React + Tailwind CSS, a Flask REST A
 ## Included
 - Landing/auth experience, registration, login, demo account, protected app workspace, sign-out and theme toggle.
 - Dashboard with calorie ring, macro bars, recent meals, weekly chart and a local water tracker.
-- Food photo upload/camera capture, preview, portion adjustment, nutrition estimates and manual food search. Image analysis requires an `HF_TOKEN`; without one, the scanner reports that recognition is unavailable instead of guessing a food.
+- Food photo upload/camera capture, preview, portion adjustment, nutrition estimates and manual food search. A Kenyan-food image model runs locally on the backend; no inference API token is required.
 - Kenyan and international foods, meal logging, edit quantity / delete, date filter, voice-search dictation where browser support exists, CSV export.
 - Goals/profile settings, daily/weekly meal-plan generator, history and calorie/macro charts.
 - Flask REST API, hashed passwords, JWT auth, per-user data filtering, validation, CORS and database seeding.
@@ -47,7 +47,7 @@ Frontend in a second terminal: `cd frontend && npm install && npm run dev`.
 The backend creates the SQLite database, seeded food catalogue, demo account, goals, weight history and sample meal logs on first run. Demo data is local and only for development. Change the demo password and `SECRET_KEY` before deploying publicly.
 
 ## Configuration
-Backend reads environment variables from the process environment. `.env.example` is a template; the current minimal setup does not auto-load `.env`, so set variables in your shell or install `python-dotenv` and add `from dotenv import load_dotenv; load_dotenv()` near the top of `app.py`. Set `HF_TOKEN` to a Hugging Face access token to enable image recognition; without it, the scanner returns an actionable configuration error rather than a misleading fixed food result. `FOOD_MODEL_ID` optionally overrides the default Kenyan-food model.
+Backend reads environment variables from the process environment. `.env.example` is a template; the current minimal setup does not auto-load `.env`, so set variables in your shell or install `python-dotenv` and add `from dotenv import load_dotenv; load_dotenv()` near the top of `app.py`. `FOOD_MODEL_ID` optionally overrides the default Kenyan-food model. On the first scan, the backend downloads the public model weights from Hugging Face and caches them; subsequent scans run locally and do not send the image to an inference API.
 
 Frontend API URL defaults to the same-origin `/api` path. For local development, set `VITE_API_URL=http://localhost:5000/api` in `frontend/.env` and restart Vite.
 
@@ -60,6 +60,8 @@ In Vercel, import the repository as one project and add these project environmen
 
 The default SQLite database is local development storage and is not suitable for Vercel's serverless filesystem. The backend creates its tables and demo seed data when it initializes; database data must be on persistent managed storage. Set `FRONTEND_ORIGIN` only if you need to restrict CORS; same-origin requests through the configured rewrite do not require cross-origin access.
 
+The local image model adds PyTorch and downloads its weights on first use. Vercel's serverless function bundle and execution limits may not support this setup; deploy the backend to a Python host that supports PyTorch and model caching to enable image scanning.
+
 ## MySQL deployment
 1. Create a MySQL 8 database using `database/schema.sql` (or create an empty database and let SQLAlchemy create tables).
 2. The PyMySQL driver is included in `backend/requirements.txt`.
@@ -71,7 +73,7 @@ The default SQLite database is local development storage and is not suitable for
 - `POST /api/auth/register`, `POST /api/auth/login`
 - `GET/PUT /api/profile`
 - `GET /api/foods?search=...`, `GET /api/foods/<id>`
-- `POST /api/recognize` (multipart form field `image`, JWT required; uses the configured image model or returns a configuration error when `HF_TOKEN` is unset)
+- `POST /api/recognize` (multipart form field `image`, JWT required; runs the configured local image model)
 - `GET/POST /api/meals`, `PUT/DELETE /api/meals/<id>`
 - `GET/PUT /api/goals`
 - `GET /api/progress?range=week|month`, `GET /api/history` (supports `format=csv`)

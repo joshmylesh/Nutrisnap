@@ -3,4 +3,6 @@ Flask-SQLAlchemy>=3.1,<4.0
 Flask-Cors>=4.0,<6.0
 PyJWT>=2.8,<3.0
 PyMySQL>=1.1,<2.0
-huggingface-hub>=0.27,<2.0
+Pillow>=11,<13
+torch>=2.6,<3.0
+transformers>=4.51,<6.0

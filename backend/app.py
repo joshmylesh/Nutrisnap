@@ -1,4 +1,4 @@
-"""NutriTrack Flask API. Demo-first implementation; replace mock recognition with a model later."""
+"""NutriTrack Flask API."""
 import os, io, csv, json, random
 from datetime import datetime, date, timedelta
 from functools import wraps
@@ -7,6 +7,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
+from food_recognition import InvalidFoodImageError, classify_image, DEFAULT_MODEL_ID
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
@@ -123,14 +124,9 @@ def recognize():
     image_bytes=image.read()
     if not image_bytes: return jsonify({'error':'The uploaded image is empty'}),400
     if len(image_bytes)>10*1024*1024: return jsonify({'error':'Image must be 10 MB or smaller'}),413
-    token=os.environ.get('HF_TOKEN')
-    if not token:
-        return jsonify({'error':'Food image recognition is not configured. Set HF_TOKEN to enable image analysis, or choose the food using manual search.'}),503
     try:
-        from huggingface_hub import InferenceClient
-        model_id=os.environ.get('FOOD_MODEL_ID','waltertaya/kenyan-food-13')
-        client=InferenceClient(model=model_id,token=token,timeout=35)
-        predictions=client.image_classification(image_bytes,top_k=5)
+        model_id=os.environ.get('FOOD_MODEL_ID',DEFAULT_MODEL_ID)
+        predictions=classify_image(image_bytes,top_k=5)
         label_map={
             'bhaji':'Bhaji','chapati':'Chapati','githeri':'Githeri',
             'kachumbari':'Kachumbari','kukuchoma':'Kuku choma',
@@ -140,25 +136,27 @@ def recognize():
         }
         matches=[]
         for prediction in predictions:
-            label=str(prediction.label).lower().replace(' ','').replace('_','').replace('-','')
+            label=str(prediction['label']).lower().replace(' ','').replace('_','').replace('-','')
             canonical=label_map.get(label)
             if not canonical: continue
             food=Food.query.filter(db.func.lower(Food.name)==canonical.lower()).first()
             if food:
-                matches.append({'food':food_dict(food),'confidence':round(float(prediction.score),4)})
+                matches.append({'food':food_dict(food),'confidence':round(float(prediction['score']),4)})
         if not matches:
             return jsonify({'error':'The model could not match this image to a food in the Kenyan nutrition catalogue. Please search for the dish manually.'}),422
         primary=matches[0]
         return jsonify({
-            'recognizer':'kenyan-food-13',
-            'notice':'AI estimate from a Kenyan-food image model. Confirm the dish and portion before adding it to your meal log.',
+            'recognizer':model_id,
+            'notice':'Local AI estimate from a Kenyan-food image model. Confirm the dish and portion before adding it to your meal log.',
             'food':primary['food'],'confidence':primary['confidence'],
             'alternatives':[item['food'] for item in matches[1:4]],
             'alternative_confidences':[item['confidence'] for item in matches[1:4]]
         })
+    except InvalidFoodImageError as error:
+        return jsonify({'error':str(error)}),400
     except Exception:
         app.logger.exception('Kenyan food image recognition failed')
-        return jsonify({'error':'The food recognition service is temporarily unavailable. Please try again or search for the dish manually.'}),503
+        return jsonify({'error':'The local food recognition model could not start. Check the backend model dependencies and network access, then try again or search manually.'}),503
 @app.route('/api/meals',methods=['GET','POST'])
 @auth_required
 def meals():
