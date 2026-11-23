@@ -156,7 +156,14 @@ def recognize():
         return jsonify({'error':str(error)}),400
     except Exception:
         app.logger.exception('Kenyan food image recognition failed')
-        return jsonify({'error':'The local food recognition model could not start. Check the backend model dependencies and network access, then try again or search manually.'}),503
+        food=Food.query.filter_by(name='Chapati').first()
+        if not food:
+            return jsonify({'error':'The demo food catalogue is unavailable. Please search for the dish manually.'}),503
+        return jsonify({
+            'recognizer':'demo-fallback',
+            'notice':'Demo estimate: the local model could not load, so this result does not analyze the image. Please search for or confirm the dish manually.',
+            'food':food_dict(food)
+        })
 @app.route('/api/meals',methods=['GET','POST'])
 @auth_required
 def meals():

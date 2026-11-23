@@ -59,7 +59,7 @@ function Scanner({notify,go}){
           <button className="btn btn-outline" onClick={()=>{setFile(null);setPreview('');setResult(null);setPicked(null)}}><X size={16}/> Remove image</button>
           <button className="btn btn-primary" disabled={busy} onClick={analyze}>{busy?<span className="spinner"/>:<Sparkles size={16}/>} {busy?'Analyzing…':'Analyze food'}</button>
         </div>}
-        <div className="privacy-note"><ShieldCheck size={17}/><span>Your image is classified by the backend model, not sent to an external inference API. The model downloads on the first scan.</span></div>
+        <div className="privacy-note"><ShieldCheck size={17}/><span>When the local model is unavailable, the scanner uses a clearly labeled demo estimate. Confirm the dish before logging it.</span></div>
       </div>
       <div className="card recognition-card">
         <div className="card-head"><div><span className="eyebrow">RESULTS</span><h3>Nutrition breakdown</h3></div><span className="soft-icon"><Sparkles size={18}/></span></div>
